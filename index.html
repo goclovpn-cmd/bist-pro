@@ -2,9 +2,11 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#070a0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BIST Pro">
 <link rel="manifest" href="manifest.json">
 <title>WayneTech // BIST Portföy</title>
 <style>
@@ -20,12 +22,12 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; padding: 0 0 74px 0; background: var(--bg); color: var(--text);
+    margin: 0; padding: 0 0 calc(78px + env(safe-area-inset-bottom)) 0; background: var(--bg); color: var(--text);
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 14px;
   }
   .topbar {
     position: sticky; top: 0; z-index: 20; background: var(--card);
-    border-bottom: 2px solid var(--accent); padding: 10px 14px;
+    border-bottom: 2px solid var(--accent); padding: calc(10px + env(safe-area-inset-top)) 14px 10px 14px;
     display: flex; justify-content: space-between; align-items: center;
   }
   .brand { font-weight: 800; letter-spacing: 1px; color: var(--accent); font-size: 15px; }
@@ -60,7 +62,7 @@
   input, select {
     width: 100%; background: var(--card2); border: 1px solid var(--border); color: var(--text);
     padding: 9px 10px; border-radius: 4px; font-family: 'Consolas', monospace;
-    font-size: 14px; font-weight: 700; outline: none;
+    font-size: 16px; font-weight: 700; outline: none;
   }
   input:focus, select:focus { border-color: var(--accent); }
   .btn {
@@ -74,7 +76,7 @@
   .btn-purple { background: #2a183b; color: #e9d5ff; border-color: #a855f7; }
   body.light .btn-purple { background: #f3e8ff; color: #5b21b6; border-color: #7c3aed; }
   .btn-danger { background: #5c1324; color: #fff; border-color: #ff4d4d; }
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-family: 'Consolas', monospace; font-size: 13px; }
   th {
     text-align: right; padding: 7px 6px; color: var(--amber); border-bottom: 2px solid var(--amber);
@@ -101,7 +103,9 @@
   .bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
     background: var(--card); border-top: 1px solid var(--border);
-    display: grid; grid-template-columns: repeat(4, 1fr); height: 60px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(60px + env(safe-area-inset-bottom));
   }
   .nav-btn {
     background: transparent; border: none; color: var(--muted); font-weight: 700;
@@ -111,7 +115,7 @@
   .nav-btn.active { color: var(--accent); border-top: 2px solid var(--accent); }
   .nav-icon { font-size: 18px; line-height: 1; }
   .toast {
-    position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: calc(74px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
     background: #005577; color: #fff; border: 1px solid #00d2ff;
     padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 700;
     z-index: 50; display: none; max-width: 90%; text-align: center;
@@ -313,10 +317,10 @@
 const STORAGE_KEY = "bist_pro_pwa_v1";
 let state = {
   hisseler: ["ASELS", "THYAO"],
-  kasa: [],       // {id, tip: KE|KC|ALIS|SATIS|TEMETTU, tutar, tarih, hisse?}
-  islemler: [],   // {id, tip: A|S|B, hisse, fiyat, adet, kom, tarih, kasaId?}
-  alarmlar: {},   // {ASELS: {hedef, stop}}
-  fiyatlar: {},   // {ASELS: 343.75}
+  kasa: [],
+  islemler: [],
+  alarmlar: {},
+  fiyatlar: {},
   komOran: "10",
   tema: "dark"
 };
@@ -409,13 +413,11 @@ function hesapla() {
 function render() {
   const { kasa, pf } = hesapla();
 
-  // Hisse comboboxları
   const cmb = document.getElementById("cmbHisse");
   const eskiSec = cmb.value;
   cmb.innerHTML = state.hisseler.map(h => `<option value="${h}">${h}</option>`).join("");
   if (state.hisseler.includes(eskiSec)) cmb.value = eskiSec;
 
-  // Portföy tablosu
   const tbody = document.getElementById("portfoyBody");
   const aktif = Object.entries(pf).filter(([, v]) => v.adet > 0);
   let tm = 0, td = 0, fiyatVar = false;
@@ -463,7 +465,6 @@ function render() {
     lblKz.textContent = "-"; lblKz.className = "stat-val";
   }
 
-  // Geçmiş listesi
   const gl = document.getElementById("gecmisList");
   gl.innerHTML = "";
   const tum = [
@@ -694,24 +695,6 @@ function temettuBedelsizKaydet() {
   toast("Kurumsal işlem kaydedildi.");
 }
 
-async function tekFiyatCek(hisse) {
-  const hedefUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${hisse}.IS?range=5d&interval=1d`;
-  const proxyler = [
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`
-  ];
-  for (const p of proxyler) {
-    try {
-      const res = await fetch(p(hedefUrl));
-      if (!res.ok) continue;
-      const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) return Math.round(meta.regularMarketPrice * 100) / 100;
-    } catch (e) {}
-  }
-  return null;
-}
-
 async function fiyatCek(sessiz = false) {
   const { pf } = hesapla();
   const aktif = Object.entries(pf).filter(([, v]) => v.adet > 0).map(([h]) => h);
@@ -719,19 +702,24 @@ async function fiyatCek(sessiz = false) {
 
   const btn = document.getElementById("btnFiyat");
   btn.disabled = true; btn.textContent = "Çekiliyor...";
-  let basarili = 0;
 
-  await Promise.all(aktif.map(async h => {
-    const f = await tekFiyatCek(h);
-    if (f) { state.fiyatlar[h] = f; basarili++; }
-  }));
+  try {
+    const res = await fetch(`/api/fiyat?hisseler=${encodeURIComponent(aktif.join(","))}`);
+    if (!res.ok) throw new Error("API erişim hatası");
+    const veriler = await res.json();
+    const adet = Object.keys(veriler).length;
 
-  btn.disabled = false; btn.textContent = "BIST Fiyatlarını Çek";
-  if (basarili > 0) {
-    kaydetState(); render(); alarmKontrol();
-    toast(`${basarili} hisse güncellendi (${new Date().toLocaleTimeString("tr-TR")})`);
-  } else if (!sessiz) {
-    toast("Fiyat alınamadı. İnternet bağlantınızı kontrol edin.");
+    if (adet > 0) {
+      Object.assign(state.fiyatlar, veriler);
+      kaydetState(); render(); alarmKontrol();
+      toast(`${adet} hisse güncellendi (${new Date().toLocaleTimeString("tr-TR")})`);
+    } else if (!sessiz) {
+      toast("Fiyat verisi bulunamadı.");
+    }
+  } catch (e) {
+    if (!sessiz) toast("Fiyat alınamadı. Uygulamayı Vercel linkinden açtığınızdan emin olun.");
+  } finally {
+    btn.disabled = false; btn.textContent = "BIST Fiyatlarını Çek";
   }
 }
 
