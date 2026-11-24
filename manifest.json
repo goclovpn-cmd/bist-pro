@@ -1,6 +1,6 @@
 {
-  "name": "WayneTech BIST Portföy",
-  "short_name": "BIST Pro",
+  "name": "DODNI // BIST Portföy",
+  "short_name": "DODNI BIST",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#070a0e",
@@ -8,7 +8,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23070a0e'/><text x='50%25' y='62%25' font-size='48' font-family='sans-serif' font-weight='bold' fill='%2300d2ff' text-anchor='middle'>B</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23070a0e'/><text x='50%25' y='63%25' font-size='50' font-family='sans-serif' font-weight='bold' fill='%2300d2ff' text-anchor='middle'>D</text></svg>",
       "sizes": "192x192",
       "type": "image/svg+xml"
     }
