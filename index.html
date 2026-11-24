@@ -6,9 +6,10 @@
 <meta name="theme-color" content="#070a0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BIST Pro">
+<meta name="apple-mobile-web-app-title" content="DODNI BIST">
 <link rel="manifest" href="manifest.json">
-<title>WayneTech // BIST Portföy</title>
+<title>DODNI // BIST</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --bg: #070a0e; --card: #0d131a; --card2: #121b24; --border: #1c3144;
@@ -134,11 +135,11 @@
 <body>
 
 <div class="topbar">
-  <div class="brand">WAYNETECH // BIST</div>
+  <div class="brand">DODNI // BIST</div>
   <div class="top-actions">
-    <button class="icon-btn" onclick="yedekIndir()" title="Yedekle">💾</button>
-    <button class="icon-btn" onclick="document.getElementById('yedekInput').click()" title="Geri Yükle">📂</button>
-    <input type="file" id="yedekInput" accept=".json" style="display:none" onchange="yedekYukle(event)">
+    <button class="icon-btn" onclick="document.getElementById('yedekModal').classList.add('open')" title="Yedekle">💾</button>
+    <button class="icon-btn" onclick="document.getElementById('yedekInput').click()" title="Geri Yükle (.json / .zip)">📂</button>
+    <input type="file" id="yedekInput" accept=".json,.zip" style="display:none" onchange="yedekYukle(event)">
     <button class="icon-btn" id="btnTema" onclick="temaDegistir()">☀</button>
   </div>
 </div>
@@ -264,6 +265,16 @@
   </div>
 </div>
 
+<!-- YEDEKLEME TÜRÜ MODALI -->
+<div class="modal-bg" id="yedekModal">
+  <div class="modal">
+    <div class="card-title">YEDEKLEME FORMATI SEÇİN</div>
+    <button class="btn btn-primary" style="margin-bottom:8px" onclick="yedekIndirJson()">📱 Mobil Yedek İndir (.json)</button>
+    <button class="btn btn-amber" style="margin-bottom:8px" onclick="yedekIndirZip()">💻 PC Uyumlu Yedek İndir (.zip)</button>
+    <button class="btn" onclick="modalKapat('yedekModal')">İptal</button>
+  </div>
+</div>
+
 <!-- HİSSE AKSİYON / ALARM MODALI -->
 <div class="modal-bg" id="hisseModal">
   <div class="modal">
@@ -314,7 +325,7 @@
 </div>
 
 <script>
-const STORAGE_KEY = "bist_pro_pwa_v1";
+const STORAGE_KEY = "dodni_bist_pwa_v1";
 let state = {
   hisseler: ["ASELS", "THYAO"],
   kasa: [],
@@ -330,7 +341,7 @@ let tetiklenenAlarmlar = new Set();
 
 function yukleState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("bist_pro_pwa_v1");
     if (raw) state = Object.assign(state, JSON.parse(raw));
   } catch (e) {}
 }
@@ -367,7 +378,8 @@ function toast(msg) {
   window._tTimer = setTimeout(() => t.style.display = "none", 3500);
 }
 function bugunISO() { return new Date().toISOString().slice(0, 10); }
-function isoToTr(iso) { const p = iso.split("-"); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : iso; }
+function isoToTr(iso) { const p = iso.split("-"); return p.length === 3 && p[0].length === 4 ? `${p[2]}-${p[1]}-${p[0]}` : iso; }
+function trToIso(tr) { const p = tr.split("-"); return p.length === 3 && p[0].length === 2 ? `${p[2]}-${p[1]}-${p[0]}` : tr; }
 
 function sekme(id, btn) {
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
@@ -717,7 +729,7 @@ async function fiyatCek(sessiz = false) {
       toast("Fiyat verisi bulunamadı.");
     }
   } catch (e) {
-    if (!sessiz) toast("Fiyat alınamadı. Uygulamayı Vercel linkinden açtığınızdan emin olun.");
+    if (!sessiz) toast("Fiyat alınamadı. İnternet bağlantınızı kontrol edin.");
   } finally {
     btn.disabled = false; btn.textContent = "BIST Fiyatlarını Çek";
   }
@@ -778,27 +790,128 @@ function rapor(tur) {
   }
 }
 
-function yedekIndir() {
+function yedekIndirJson() {
+  modalKapat("yedekModal");
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `BIST_Mobil_Yedek_${bugunISO()}.json`;
-  a.click(); toast("Yedek indirildi.");
+  a.download = `DODNI_Mobil_Yedek_${bugunISO()}.json`;
+  a.click(); toast("Mobil (.json) yedeği indirildi.");
 }
-function yedekYukle(e) {
+
+async function yedekIndirZip() {
+  modalKapat("yedekModal");
+  if (typeof JSZip === "undefined") {
+    toast("ZIP modülü yüklenemedi, JSON olarak indiriliyor...");
+    return yedekIndirJson();
+  }
+  const zip = new JSZip();
+  zip.file("sntlst.txt", state.hisseler.join("\n") + (state.hisseler.length ? "\n" : ""));
+  zip.file("komisyon.txt", state.komOran || "10");
+  zip.file("tema.txt", state.tema || "dark");
+
+  const kasaLines = state.kasa.map(k => {
+    const trT = isoToTr(k.tarih);
+    return k.tip === "TEMETTU" && k.hisse
+      ? `${k.tip}|${Number(k.tutar).toFixed(2)}|${trT}|${k.hisse}`
+      : `${k.tip}|${Number(k.tutar).toFixed(2)}|${trT}`;
+  });
+  zip.file("kasa.txt", kasaLines.join("\n") + (kasaLines.length ? "\n" : ""));
+
+  const islemLines = state.islemler.map(x =>
+    `${x.tip}|${x.hisse}|${Number(x.fiyat).toFixed(2)}|${x.adet}|${Number(x.kom).toFixed(2)}|${isoToTr(x.tarih)}`
+  );
+  zip.file("datac.txt", islemLines.join("\n") + (islemLines.length ? "\n" : ""));
+
+  const alarmLines = Object.entries(state.alarmlar)
+    .filter(([, v]) => v.hedef > 0 || v.stop > 0)
+    .map(([h, v]) => `${h}|${Number(v.hedef).toFixed(2)}|${Number(v.stop).toFixed(2)}`);
+  zip.file("alarmlar.txt", alarmLines.join("\n") + (alarmLines.length ? "\n" : ""));
+
+  const content = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(content);
+  a.download = `DODNI_PC_Yedek_${bugunISO()}.zip`;
+  a.click(); toast("PC uyumlu (.zip) yedeği indirildi.");
+}
+
+async function yedekYukle(e) {
   const file = e.target.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const veri = JSON.parse(r.result);
+  try {
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      if (typeof JSZip === "undefined") throw new Error("ZIP modülü hazır değil.");
+      const zip = await JSZip.loadAsync(file);
+      const oku = async (ad) => zip.file(ad) ? await zip.file(ad).async("string") : "";
+
+      const hisseTxt = await oku("sntlst.txt");
+      const kasaTxt = await oku("kasa.txt");
+      const islemTxt = await oku("datac.txt");
+      const alarmTxt = await oku("alarmlar.txt");
+      const komTxt = await oku("komisyon.txt");
+      const temaTxt = await oku("tema.txt");
+
+      const hisseler = hisseTxt.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
+      const baseId = Date.now();
+      const kasa = [];
+      kasaTxt.split(/\r?\n/).forEach((s, idx) => {
+        const p = s.trim().split("|");
+        if (p.length >= 3) {
+          const item = { id: baseId + idx, tip: p[0], tutar: parseFloat(p[1]) || 0, tarih: trToIso(p[2]) };
+          if (p.length >= 4 && p[3]) item.hisse = p[3].toUpperCase();
+          kasa.push(item);
+        }
+      });
+
+      const islemler = [];
+      islemTxt.split(/\r?\n/).forEach((s, idx) => {
+        const p = s.trim().split("|");
+        if (p.length === 6) {
+          const [tip, h, fy, ad, kom, tar] = p;
+          const ff = parseFloat(fy) || 0, ai = parseInt(ad, 10) || 0, kf = parseFloat(kom) || 0;
+          const isoT = trToIso(tar);
+          let kasaId = null;
+          if (tip === "A" || tip === "S") {
+            const hTip = tip === "A" ? "ALIS" : "SATIS";
+            const hTut = tip === "A" ? (ff * ai) + kf : (ff * ai) - kf;
+            const eslesen = kasa.find(k => !k._used && k.tip === hTip && Math.abs(k.tutar - hTut) < 0.02 && k.tarih === isoT);
+            if (eslesen) { kasaId = eslesen.id; eslesen._used = true; }
+          }
+          islemler.push({ id: baseId + 10000 + idx, tip, hisse: h.toUpperCase(), fiyat: ff, adet: ai, kom: kf, tarih: isoT, kasaId });
+        }
+      });
+      kasa.forEach(k => delete k._used);
+
+      const alarmlar = {};
+      alarmTxt.split(/\r?\n/).forEach(s => {
+        const p = s.trim().split("|");
+        if (p.length === 3) {
+          const hedef = parseFloat(p[1]) || 0, stop = parseFloat(p[2]) || 0;
+          if (hedef > 0 || stop > 0) alarmlar[p[0].toUpperCase()] = { hedef, stop };
+        }
+      });
+
+      state.hisseler = hisseler.length ? hisseler : ["ASELS", "THYAO"];
+      state.kasa = kasa;
+      state.islemler = islemler;
+      state.alarmlar = alarmlar;
+      if (komTxt.trim()) { state.komOran = komTxt.trim(); document.getElementById("tOran").value = state.komOran; }
+      if (["dark", "light"].includes(temaTxt.trim().toLowerCase())) state.tema = temaTxt.trim().toLowerCase();
+
+      kaydetState(); temaUygula(); render(); toast("PC (.zip) yedeği geri yüklendi.");
+    } else {
+      const text = await file.text();
+      const veri = JSON.parse(text);
       if (!Array.isArray(veri.islemler)) throw new Error();
       state = Object.assign(state, veri);
-      kaydetState(); temaUygula(); render(); toast("Yedek geri yüklendi.");
-    } catch { toast("Geçersiz yedek dosyası."); }
-  };
-  r.readAsText(file);
+      document.getElementById("tOran").value = state.komOran || "10";
+      kaydetState(); temaUygula(); render(); toast("Mobil (.json) yedeği geri yüklendi.");
+    }
+  } catch (err) {
+    toast("Geçersiz yedek dosyası.");
+  }
   e.target.value = "";
 }
+
 function csvIndir() {
   const { pf } = hesapla();
   let csv = "\uFEFFHisse;Adet;Ort. Maliyet;Toplam Maliyet;Guncel Fiyat;Guncel Deger;Kar/Zarar\n";
@@ -810,7 +923,7 @@ function csvIndir() {
   }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = `BIST_Rapor_${bugunISO()}.csv`;
+  a.download = `DODNI_BIST_Rapor_${bugunISO()}.csv`;
   a.click(); toast("Excel (CSV) indirildi.");
 }
 
