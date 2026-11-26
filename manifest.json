@@ -1,6 +1,6 @@
 {
-  "name": "DODNI // BIST Portföy",
-  "short_name": "DODNI BIST",
+  "name": "DODNI // Portföy Yönetimi",
+  "short_name": "DODNI Portföy",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#070a0e",
