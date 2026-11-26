@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#070a0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DODNI BIST">
+<meta name="apple-mobile-web-app-title" content="DODNI Portföy">
 <link rel="manifest" href="manifest.json">
-<title>DODNI // BIST</title>
+<title>DODNI // Portföy Yönetimi</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
@@ -31,7 +31,7 @@
     border-bottom: 2px solid var(--accent); padding: calc(10px + env(safe-area-inset-top)) 14px 10px 14px;
     display: flex; justify-content: space-between; align-items: center;
   }
-  .brand { font-weight: 800; letter-spacing: 1px; color: var(--accent); font-size: 15px; }
+  .brand { font-weight: 800; letter-spacing: 0.8px; color: var(--accent); font-size: 14px; }
   .top-actions { display: flex; gap: 6px; }
   .icon-btn {
     background: var(--btn-bg); border: 1px solid var(--border); color: var(--text);
@@ -47,6 +47,10 @@
   .card-title {
     font-size: 12px; font-weight: 800; color: var(--accent); letter-spacing: 0.8px;
     margin-bottom: 10px; text-transform: uppercase;
+  }
+  .disclaimer {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 4px;
+    padding: 9px 11px; font-size: 11px; line-height: 1.45; color: var(--muted); margin-bottom: 12px;
   }
   .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat-box {
@@ -135,7 +139,7 @@
 <body>
 
 <div class="topbar">
-  <div class="brand">DODNI // BIST</div>
+  <div class="brand">DODNI // PORTFÖY YÖNETİMİ</div>
   <div class="top-actions">
     <button class="icon-btn" onclick="document.getElementById('yedekModal').classList.add('open')" title="Yedekle">💾</button>
     <button class="icon-btn" onclick="document.getElementById('yedekInput').click()" title="Geri Yükle (.json / .zip)">📂</button>
@@ -159,12 +163,12 @@
 
     <div class="card">
       <div class="row">
-        <button class="btn btn-primary" id="btnFiyat" onclick="fiyatCek(false)">BIST Fiyatlarını Çek</button>
+        <button class="btn btn-primary" id="btnFiyat" onclick="fiyatCek(false)">Güncel Fiyatları Çek</button>
         <select id="cmbOto" onchange="otoAyarDegisti()" style="flex:0.65">
           <option value="0">Oto: Kapalı</option>
-          <option value="1">Oto: 1 Dk</option>
           <option value="5">Oto: 5 Dk</option>
           <option value="15">Oto: 15 Dk</option>
+          <option value="30">Oto: 30 Dk</option>
         </select>
       </div>
       <div class="table-wrap">
@@ -189,6 +193,10 @@
         <div class="legend" id="chartLegend"></div>
       </div>
     </div>
+
+    <div class="disclaimer">
+      <b>Yasal Uyarı (Disclaimer):</b> Bu proje yalnızca eğitim ve kişisel portföy takibi amacıyla açık kaynak olarak geliştirilmiştir. Borsa İstanbul A.Ş. veya Yahoo Finance ile hiçbir resmi bağlantısı bulunmamaktadır. Uygulamada gösterilen fiyat verileri Yahoo Finance üzerinden sağlanmakta olup gecikmeli veya hatalı olabilir; kesinlikle yatırım tavsiyesi niteliği taşımaz.
+    </div>
   </div>
 
   <!-- SEKME 2: İŞLEM -->
@@ -205,7 +213,7 @@
       </div>
       <div class="row">
         <div><label>Lot Adedi</label><input id="tAd" inputmode="numeric" placeholder="Adet" oninput="formatInput(this,false); komHesapla()"></div>
-        <div><label>Kom. Oranı (‱)</label><input id="tOran" inputmode="decimal" placeholder="10" oninput="formatInput(this,true); oranKaydet()"></div>
+        <div><label>Kom. Oranı (‱)</label><input id="tOran" inputmode="decimal" placeholder="10" oninput="formatInput(this,true); komHesapla()" onchange="oranKaydet()"></div>
       </div>
       <div class="row">
         <div><label>Komisyon (TL - Otomatik)</label><input id="tKom" inputmode="decimal" placeholder="0,00" oninput="formatInput(this,true)"></div>
@@ -253,6 +261,10 @@
         <div class="stat-val" id="lblRapor">-</div>
       </div>
       <button class="btn btn-amber" style="margin-top:10px" onclick="csvIndir()">Excel (CSV) Raporu İndir</button>
+    </div>
+
+    <div class="disclaimer">
+      <b>Yasal Uyarı (Disclaimer):</b> Bu proje yalnızca eğitim ve kişisel portföy takibi amacıyla açık kaynak olarak geliştirilmiştir. Borsa İstanbul A.Ş. veya Yahoo Finance ile hiçbir resmi bağlantısı bulunmamaktadır. Uygulamada gösterilen fiyat verileri Yahoo Finance üzerinden sağlanmakta olup gecikmeli veya hatalı olabilir; kesinlikle yatırım tavsiyesi niteliği taşımaz.
     </div>
   </div>
 
@@ -325,7 +337,8 @@
 </div>
 
 <script>
-const STORAGE_KEY = "dodni_bist_pwa_v1";
+const STORAGE_KEY = "dodni_portfoy_pwa_v1";
+const YASAL_UYARI_CSV = "Yasal Uyari: Yalnizca egitim ve kisisel portfoy takibi amaclidir. Borsa Istanbul A.S. veya Yahoo Finance ile resmi baglantisi yoktur; yatirim tavsiyesi degildir.";
 let state = {
   hisseler: ["ASELS", "THYAO"],
   kasa: [],
@@ -338,15 +351,27 @@ let state = {
 let seciliHisseModal = null;
 let otoTimer = null;
 let tetiklenenAlarmlar = new Set();
+let sonFiyatZamani = 0;
+let fiyatCekiliyor = false;
 
 function yukleState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("bist_pro_pwa_v1");
+    const raw = localStorage.getItem(STORAGE_KEY)
+      || localStorage.getItem("dodni_bist_pwa_v1")
+      || localStorage.getItem("bist_pro_pwa_v1");
     if (raw) state = Object.assign(state, JSON.parse(raw));
   } catch (e) {}
 }
 function kaydetState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function seansAcikMi() {
+  const d = new Date();
+  const gun = d.getDay();
+  if (gun === 0 || gun === 6) return false;
+  const dk = d.getHours() * 60 + d.getMinutes();
+  return dk >= (9 * 60 + 55) && dk <= (18 * 60 + 15);
 }
 
 function trPara(val, signed = false) {
@@ -441,24 +466,25 @@ function render() {
     for (const [h, v] of aktif) {
       tm += v.mal;
       const gf = state.fiyatlar[h];
-      if (gf) fiyatVar = true;
-      const deg = gf ? gf * v.adet : v.mal;
-      const kz = gf ? deg - v.mal : 0;
-      const yz = gf && v.mal > 0 ? (kz / v.mal) * 100 : 0;
+      const gfVar = gf !== undefined && gf !== null;
+      if (gfVar) fiyatVar = true;
+      const deg = gfVar ? gf * v.adet : v.mal;
+      const kz = gfVar ? deg - v.mal : 0;
+      const yz = gfVar && v.mal > 0 ? (kz / v.mal) * 100 : 0;
       td += deg;
 
       const alarm = state.alarmlar[h];
-      const kzCls = gf ? (kz >= 0 ? "green" : "red") : "";
+      const kzCls = gfVar ? (kz >= 0 ? "green" : "red") : "";
       const tr = document.createElement("tr");
       tr.onclick = () => hisseModalAc(h, v.adet);
       tr.innerHTML = `
         <td class="hisse-cell">${alarm ? "🔔 " : ""}${h}</td>
         <td style="text-align:right">${trSayi(v.adet)}</td>
         <td style="text-align:right">${trPara(v.ort)}</td>
-        <td style="text-align:right">${gf ? trPara(gf) : "-"}</td>
-        <td style="text-align:right">${gf ? trPara(deg) : "-"}</td>
-        <td style="text-align:right" class="${kzCls}">${gf ? trPara(kz, true) : "-"}</td>
-        <td style="text-align:right" class="${kzCls}">${gf ? "%" + trPara(yz, true) : "-"}</td>
+        <td style="text-align:right">${gfVar ? trPara(gf) : "-"}</td>
+        <td style="text-align:right">${gfVar ? trPara(deg) : "-"}</td>
+        <td style="text-align:right" class="${kzCls}">${gfVar ? trPara(kz, true) : "-"}</td>
+        <td style="text-align:right" class="${kzCls}">${gfVar ? "%" + trPara(yz, true) : "-"}</td>
       `;
       tbody.appendChild(tr);
     }
@@ -482,7 +508,7 @@ function render() {
   const tum = [
     ...state.islemler.map(x => ({ ...x, _kaynak: "ISLEM" })),
     ...state.kasa.filter(k => ["KE", "KC", "TEMETTU"].includes(k.tip)).map(k => ({ ...k, _kaynak: "KASA" }))
-  ].sort((a, b) => b.id - a.id);
+  ].sort((a, b) => (b.tarih || "").localeCompare(a.tarih || "") || (b.id - a.id));
 
   if (!tum.length) {
     gl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:16px">Henüz kayıt yok</div>`;
@@ -517,7 +543,7 @@ function cizGrafik() {
 
   const veriler = Object.entries(pf)
     .filter(([, v]) => v.adet > 0)
-    .map(([h, v]) => [h, (state.fiyatlar[h] || v.ort) * v.adet])
+    .map(([h, v]) => [h, (state.fiyatlar[h] ?? v.ort) * v.adet])
     .sort((a, b) => b[1] - a[1]);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -560,7 +586,7 @@ function cizGrafik() {
 
 function oranKaydet() {
   state.komOran = document.getElementById("tOran").value.trim() || "0";
-  kaydetState(); komHesapla();
+  kaydetState();
 }
 function komHesapla() {
   const al = parseNum(document.getElementById("tAl").value);
@@ -587,20 +613,22 @@ function islemEkle() {
   if (!h || ad <= 0 || (al === 0 && sat === 0) || (al > 0 && sat > 0)) {
     return toast("Alış veya Satıştan yalnızca biri ve geçerli adet girilmeli.");
   }
+  oranKaydet();
   const { kasa, pf } = hesapla();
   const id = Date.now();
   const kasaId = id + 1;
+  const refId = "R" + id;
 
   if (al > 0) {
     const mal = Math.round(((al * ad) + kom) * 100) / 100;
     if (mal > kasa) return toast("Kasada yeterli bakiye yok.");
-    state.kasa.push({ id: kasaId, tip: "ALIS", tutar: mal, tarih: tar });
-    state.islemler.push({ id, tip: "A", hisse: h, fiyat: al, adet: ad, kom, tarih: tar, kasaId });
+    state.kasa.push({ id: kasaId, tip: "ALIS", tutar: mal, tarih: tar, hisse: h, refId });
+    state.islemler.push({ id, tip: "A", hisse: h, fiyat: al, adet: ad, kom, tarih: tar, kasaId, refId });
   } else {
     if (ad > (pf[h]?.adet || 0)) return toast("Portföyde yeterli lot yok.");
     const net = Math.round(((sat * ad) - kom) * 100) / 100;
-    state.kasa.push({ id: kasaId, tip: "SATIS", tutar: net, tarih: tar });
-    state.islemler.push({ id, tip: "S", hisse: h, fiyat: sat, adet: ad, kom, tarih: tar, kasaId });
+    state.kasa.push({ id: kasaId, tip: "SATIS", tutar: net, tarih: tar, hisse: h, refId });
+    state.islemler.push({ id, tip: "S", hisse: h, fiyat: sat, adet: ad, kom, tarih: tar, kasaId, refId });
   }
   ["tAl", "tSat", "tAd", "tKom"].forEach(i => document.getElementById(i).value = "");
   kaydetState(); render(); toast("İşlem kaydedildi.");
@@ -611,7 +639,8 @@ function kasaIslem(tip) {
   if (tut <= 0) return toast("Geçerli tutar girin.");
   const { kasa } = hesapla();
   if (tip === "KC" && tut > kasa) return toast("Yetersiz kasa bakiyesi.");
-  state.kasa.push({ id: Date.now(), tip, tutar: tut, tarih: bugunISO() });
+  const id = Date.now();
+  state.kasa.push({ id, tip, tutar: tut, tarih: bugunISO(), refId: "R" + id });
   document.getElementById("tKasa").value = "";
   kaydetState(); render(); toast("Kasa güncellendi.");
 }
@@ -626,8 +655,10 @@ function hisseEkle() {
 }
 function hisseSil() {
   const k = document.getElementById("tYeniHisse").value.trim().toUpperCase() || document.getElementById("cmbHisse").value;
+  if (!k) return toast("Silinecek hisse seçili değil.");
   const { pf } = hesapla();
   if ((pf[k]?.adet || 0) > 0) return toast("Portföyde lotu olan hisse silinemez.");
+  if (!confirm(`'${k}' hissesini takip listesinden silmek istediğinize emin misiniz?`)) return;
   state.hisseler = state.hisseler.filter(x => x !== k);
   document.getElementById("tYeniHisse").value = "";
   kaydetState(); render(); toast(k + " silindi.");
@@ -638,8 +669,9 @@ function kayitSil(kaynak, id) {
   if (kaynak === "ISLEM") {
     const hedef = state.islemler.find(x => x.id === id);
     state.islemler = state.islemler.filter(x => x.id !== id);
-    if (hedef && hedef.kasaId) {
-      state.kasa = state.kasa.filter(k => k.id !== hedef.kasaId);
+    if (hedef) {
+      if (hedef.refId) state.kasa = state.kasa.filter(k => k.refId !== hedef.refId);
+      else if (hedef.kasaId) state.kasa = state.kasa.filter(k => k.id !== hedef.kasaId);
     }
   } else {
     state.kasa = state.kasa.filter(k => k.id !== id);
@@ -665,7 +697,7 @@ function hizliSatisDoldur() {
   document.getElementById("cmbHisse").value = h;
   document.getElementById("tAl").value = "0";
   document.getElementById("tAd").value = trSayi(adet);
-  document.getElementById("tSat").value = state.fiyatlar[h] ? trPara(state.fiyatlar[h]) : "";
+  document.getElementById("tSat").value = state.fiyatlar[h] !== undefined ? trPara(state.fiyatlar[h]) : "";
   komHesapla();
   toast(`${h} satış için aktarıldı.`);
 }
@@ -698,20 +730,32 @@ function temettuBedelsizKaydet() {
   const val = parseNum(document.getElementById("tbDeger").value);
   const tar = document.getElementById("tbTarih").value || bugunISO();
   if (!h || val <= 0) return toast("Geçerli değer girin.");
+  const id = Date.now();
   if (tur === "TEMETTU") {
-    state.kasa.push({ id: Date.now(), tip: "TEMETTU", tutar: val, tarih: tar, hisse: h });
+    state.kasa.push({ id, tip: "TEMETTU", tutar: val, tarih: tar, hisse: h, refId: "R" + id });
   } else {
-    state.islemler.push({ id: Date.now(), tip: "B", hisse: h, fiyat: 0, adet: Math.trunc(val), kom: 0, tarih: tar });
+    state.islemler.push({ id, tip: "B", hisse: h, fiyat: 0, adet: Math.trunc(val), kom: 0, tarih: tar, refId: "R" + id });
   }
   kaydetState(); render(); modalKapat("temModal");
   toast("Kurumsal işlem kaydedildi.");
 }
 
 async function fiyatCek(sessiz = false) {
+  if (fiyatCekiliyor) return;
   const { pf } = hesapla();
   const aktif = Object.entries(pf).filter(([, v]) => v.adet > 0).map(([h]) => h);
   if (!aktif.length) { if (!sessiz) toast("Portföyde aktif hisse yok."); return; }
 
+  if (sessiz && !seansAcikMi()) return;
+
+  const gecenSn = (Date.now() - sonFiyatZamani) / 1000;
+  const eksikVar = aktif.some(h => state.fiyatlar[h] === undefined);
+  if (gecenSn < 45 && !eksikVar) {
+    if (!sessiz) toast(`Fiyatlar güncel. ${Math.ceil(45 - gecenSn)} sn sonra tekrar deneyin.`);
+    return;
+  }
+
+  fiyatCekiliyor = true;
   const btn = document.getElementById("btnFiyat");
   btn.disabled = true; btn.textContent = "Çekiliyor...";
 
@@ -723,6 +767,7 @@ async function fiyatCek(sessiz = false) {
 
     if (adet > 0) {
       Object.assign(state.fiyatlar, veriler);
+      sonFiyatZamani = Date.now();
       kaydetState(); render(); alarmKontrol();
       toast(`${adet} hisse güncellendi (${new Date().toLocaleTimeString("tr-TR")})`);
     } else if (!sessiz) {
@@ -731,7 +776,8 @@ async function fiyatCek(sessiz = false) {
   } catch (e) {
     if (!sessiz) toast("Fiyat alınamadı. İnternet bağlantınızı kontrol edin.");
   } finally {
-    btn.disabled = false; btn.textContent = "BIST Fiyatlarını Çek";
+    fiyatCekiliyor = false;
+    btn.disabled = false; btn.textContent = "Güncel Fiyatları Çek";
   }
 }
 
@@ -739,7 +785,7 @@ function alarmKontrol() {
   const uyarilar = [];
   for (const [h, a] of Object.entries(state.alarmlar)) {
     const gf = state.fiyatlar[h];
-    if (!gf) continue;
+    if (gf === undefined || gf === null) continue;
     if (a.hedef > 0 && gf >= a.hedef && !tetiklenenAlarmlar.has(h + "H" + a.hedef)) {
       tetiklenenAlarmlar.add(h + "H" + a.hedef);
       uyarilar.push(`🎯 HEDEF: ${h} ${trPara(gf)} TL (Hedef: ${trPara(a.hedef)} TL)`);
@@ -757,7 +803,7 @@ function otoAyarDegisti() {
   const dk = parseInt(document.getElementById("cmbOto").value, 10);
   if (dk > 0) {
     otoTimer = setInterval(() => fiyatCek(true), dk * 60 * 1000);
-    toast(`Oto güncelleme: ${dk} dakikada bir`);
+    toast(`Oto güncelleme: ${dk} dk (seans saatlerinde)`);
   } else toast("Oto güncelleme kapalı");
 }
 
@@ -795,7 +841,7 @@ function yedekIndirJson() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `DODNI_Mobil_Yedek_${bugunISO()}.json`;
+  a.download = `DODNI_Portfoy_Mobil_Yedek_${bugunISO()}.json`;
   a.click(); toast("Mobil (.json) yedeği indirildi.");
 }
 
@@ -812,15 +858,16 @@ async function yedekIndirZip() {
 
   const kasaLines = state.kasa.map(k => {
     const trT = isoToTr(k.tarih);
-    return k.tip === "TEMETTU" && k.hisse
-      ? `${k.tip}|${Number(k.tutar).toFixed(2)}|${trT}|${k.hisse}`
-      : `${k.tip}|${Number(k.tutar).toFixed(2)}|${trT}`;
+    const detay = k.hisse || "";
+    const rid = k.refId || ("R" + k.id);
+    return `${k.tip}|${Number(k.tutar).toFixed(2)}|${trT}|${detay}|${rid}`;
   });
   zip.file("kasa.txt", kasaLines.join("\n") + (kasaLines.length ? "\n" : ""));
 
-  const islemLines = state.islemler.map(x =>
-    `${x.tip}|${x.hisse}|${Number(x.fiyat).toFixed(2)}|${x.adet}|${Number(x.kom).toFixed(2)}|${isoToTr(x.tarih)}`
-  );
+  const islemLines = state.islemler.map(x => {
+    const rid = x.refId || ("R" + x.id);
+    return `${x.tip}|${x.hisse}|${Number(x.fiyat).toFixed(2)}|${x.adet}|${Number(x.kom).toFixed(2)}|${isoToTr(x.tarih)}|${rid}`;
+  });
   zip.file("datac.txt", islemLines.join("\n") + (islemLines.length ? "\n" : ""));
 
   const alarmLines = Object.entries(state.alarmlar)
@@ -831,7 +878,7 @@ async function yedekIndirZip() {
   const content = await zip.generateAsync({ type: "blob" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(content);
-  a.download = `DODNI_PC_Yedek_${bugunISO()}.zip`;
+  a.download = `DODNI_Portfoy_PC_Yedek_${bugunISO()}.zip`;
   a.click(); toast("PC uyumlu (.zip) yedeği indirildi.");
 }
 
@@ -853,11 +900,15 @@ async function yedekYukle(e) {
       const hisseler = hisseTxt.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
       const baseId = Date.now();
       const kasa = [];
+      const refToKasaId = {};
+
       kasaTxt.split(/\r?\n/).forEach((s, idx) => {
         const p = s.trim().split("|");
         if (p.length >= 3) {
-          const item = { id: baseId + idx, tip: p[0], tutar: parseFloat(p[1]) || 0, tarih: trToIso(p[2]) };
+          const kid = baseId + idx;
+          const item = { id: kid, tip: p[0], tutar: parseFloat(p[1]) || 0, tarih: trToIso(p[2]) };
           if (p.length >= 4 && p[3]) item.hisse = p[3].toUpperCase();
+          if (p.length >= 5 && p[4]) { item.refId = p[4].trim(); refToKasaId[item.refId] = kid; }
           kasa.push(item);
         }
       });
@@ -865,18 +916,19 @@ async function yedekYukle(e) {
       const islemler = [];
       islemTxt.split(/\r?\n/).forEach((s, idx) => {
         const p = s.trim().split("|");
-        if (p.length === 6) {
+        if (p.length >= 6) {
           const [tip, h, fy, ad, kom, tar] = p;
+          const refId = p.length >= 7 && p[6] ? p[6].trim() : null;
           const ff = parseFloat(fy) || 0, ai = parseInt(ad, 10) || 0, kf = parseFloat(kom) || 0;
           const isoT = trToIso(tar);
-          let kasaId = null;
-          if (tip === "A" || tip === "S") {
+          let kasaId = refId ? (refToKasaId[refId] || null) : null;
+          if (!kasaId && (tip === "A" || tip === "S")) {
             const hTip = tip === "A" ? "ALIS" : "SATIS";
             const hTut = tip === "A" ? (ff * ai) + kf : (ff * ai) - kf;
             const eslesen = kasa.find(k => !k._used && k.tip === hTip && Math.abs(k.tutar - hTut) < 0.02 && k.tarih === isoT);
             if (eslesen) { kasaId = eslesen.id; eslesen._used = true; }
           }
-          islemler.push({ id: baseId + 10000 + idx, tip, hisse: h.toUpperCase(), fiyat: ff, adet: ai, kom: kf, tarih: isoT, kasaId });
+          islemler.push({ id: baseId + 10000 + idx, tip, hisse: h.toUpperCase(), fiyat: ff, adet: ai, kom: kf, tarih: isoT, kasaId, refId });
         }
       });
       kasa.forEach(k => delete k._used);
@@ -884,7 +936,7 @@ async function yedekYukle(e) {
       const alarmlar = {};
       alarmTxt.split(/\r?\n/).forEach(s => {
         const p = s.trim().split("|");
-        if (p.length === 3) {
+        if (p.length >= 3) {
           const hedef = parseFloat(p[1]) || 0, stop = parseFloat(p[2]) || 0;
           if (hedef > 0 || stop > 0) alarmlar[p[0].toUpperCase()] = { hedef, stop };
         }
@@ -917,13 +969,18 @@ function csvIndir() {
   let csv = "\uFEFFHisse;Adet;Ort. Maliyet;Toplam Maliyet;Guncel Fiyat;Guncel Deger;Kar/Zarar\n";
   for (const [h, v] of Object.entries(pf)) {
     if (v.adet <= 0) continue;
-    const gf = state.fiyatlar[h] || v.ort;
-    const deg = gf * v.adet;
-    csv += `${h};${v.adet};${trPara(v.ort)};${trPara(v.mal)};${trPara(gf)};${trPara(deg)};${trPara(deg - v.mal)}\n`;
+    const gf = state.fiyatlar[h];
+    if (gf !== undefined && gf !== null) {
+      const deg = gf * v.adet;
+      csv += `${h};${v.adet};${trPara(v.ort)};${trPara(v.mal)};${trPara(gf)};${trPara(deg)};${trPara(deg - v.mal)}\n`;
+    } else {
+      csv += `${h};${v.adet};${trPara(v.ort)};${trPara(v.mal)};;;\n`;
+    }
   }
+  csv += `\n${YASAL_UYARI_CSV}\n`;
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  a.download = `DODNI_BIST_Rapor_${bugunISO()}.csv`;
+  a.download = `DODNI_Portfoy_Rapor_${bugunISO()}.csv`;
   a.click(); toast("Excel (CSV) indirildi.");
 }
 
