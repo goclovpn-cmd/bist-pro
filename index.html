@@ -10,6 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <title>DODNI // Portföy Yönetimi</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #070a0e; --card: #0d131a; --card2: #121b24; --border: #1c3144;
@@ -29,14 +30,15 @@
   .topbar {
     position: sticky; top: 0; z-index: 20; background: var(--card);
     border-bottom: 2px solid var(--accent); padding: calc(10px + env(safe-area-inset-top)) 14px 10px 14px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: center; gap: 6px;
   }
-  .brand { font-weight: 800; letter-spacing: 0.8px; color: var(--accent); font-size: 14px; }
-  .top-actions { display: flex; gap: 6px; }
+  .brand { font-weight: 800; letter-spacing: 0.6px; color: var(--accent); font-size: 13px; white-space: nowrap; }
+  .top-actions { display: flex; gap: 5px; align-items: center; }
   .icon-btn {
     background: var(--btn-bg); border: 1px solid var(--border); color: var(--text);
-    padding: 6px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; cursor: pointer;
+    padding: 6px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;
   }
+  .cloud-btn { border-color: var(--accent); color: var(--accent); }
   .container { padding: 12px; max-width: 720px; margin: 0 auto; }
   .section { display: none; }
   .section.active { display: block; }
@@ -139,8 +141,9 @@
 <body>
 
 <div class="topbar">
-  <div class="brand">DODNI // PORTFÖY YÖNETİMİ</div>
+  <div class="brand">DODNI // PORTFÖY</div>
   <div class="top-actions">
+    <button class="icon-btn cloud-btn" id="btnBulut" onclick="bulutModalAc()">☁ Giriş</button>
     <button class="icon-btn" onclick="document.getElementById('yedekModal').classList.add('open')" title="Yedekle">💾</button>
     <button class="icon-btn" onclick="document.getElementById('yedekInput').click()" title="Geri Yükle (.json / .zip)">📂</button>
     <input type="file" id="yedekInput" accept=".json,.zip" style="display:none" onchange="yedekYukle(event)">
@@ -277,6 +280,34 @@
   </div>
 </div>
 
+<!-- BULUT HESAP MODALI -->
+<div class="modal-bg" id="bulutModal">
+  <div class="modal">
+    <div class="card-title">☁ DODNI BULUT SENKRONİZASYONU</div>
+    <div id="bulutLoginForm">
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">
+        PC ve telefonunuzu otomatik eşitlemek için giriş yapın veya ücretsiz hesap oluşturun.
+      </div>
+      <div style="margin-bottom:8px;"><label>E-posta</label><input type="email" id="sbEmail" placeholder="ornek@eposta.com"></div>
+      <div style="margin-bottom:10px;"><label>Şifre</label><input type="password" id="sbPass" placeholder="En az 6 karakter"></div>
+      <div class="row">
+        <button class="btn btn-primary" onclick="bulutGiris()">Giriş Yap</button>
+        <button class="btn" onclick="bulutKayit()">Hesap Oluştur</button>
+      </div>
+    </div>
+    <div id="bulutAccountPanel" style="display:none">
+      <div class="stat-box" style="margin-bottom:10px;">
+        <div class="stat-label">Aktif Bulut Hesabı</div>
+        <div class="stat-val" id="sbUserMail" style="font-size:13px; color:var(--accent)">-</div>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:8px" onclick="bulutGonder(false); modalKapat('bulutModal')">⬆ Bu Cihazdakileri Buluta Gönder</button>
+      <button class="btn btn-amber" style="margin-bottom:8px" onclick="bulutCek(false); modalKapat('bulutModal')">⬇ Buluttan Güncel Verileri Çek</button>
+      <button class="btn btn-danger" style="margin-bottom:8px" onclick="bulutCikis()">🚪 Hesaptan Çıkış Yap</button>
+    </div>
+    <button class="btn" onclick="modalKapat('bulutModal')">Kapat</button>
+  </div>
+</div>
+
 <!-- YEDEKLEME TÜRÜ MODALI -->
 <div class="modal-bg" id="yedekModal">
   <div class="modal">
@@ -337,6 +368,10 @@
 </div>
 
 <script>
+const SUPABASE_URL = "https://eacnkzveqmzgxicbyggy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_CdZhVbLOSlOISJmIYeN6dw_TsAwR9bf";
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 const STORAGE_KEY = "dodni_portfoy_pwa_v1";
 const YASAL_UYARI_CSV = "Yasal Uyari: Yalnizca egitim ve kisisel portfoy takibi amaclidir. Borsa Istanbul A.S. veya Yahoo Finance ile resmi baglantisi yoktur; yatirim tavsiyesi degildir.";
 let state = {
@@ -348,6 +383,7 @@ let state = {
   komOran: "10",
   tema: "dark"
 };
+let aktifUser = null;
 let seciliHisseModal = null;
 let otoTimer = null;
 let tetiklenenAlarmlar = new Set();
@@ -364,21 +400,13 @@ function refIdGocKontrol() {
   let degisti = false;
   const kasaIdToRef = {};
   for (const x of state.islemler) {
-    if (!x.refId) {
-      x.refId = yeniRefId();
-      degisti = true;
-    }
-    if (x.kasaId !== undefined && x.kasaId !== null) {
-      kasaIdToRef[x.kasaId] = x.refId;
-    }
+    if (!x.refId) { x.refId = yeniRefId(); degisti = true; }
+    if (x.kasaId !== undefined && x.kasaId !== null) kasaIdToRef[x.kasaId] = x.refId;
   }
   for (const k of state.kasa) {
-    if (!k.refId) {
-      k.refId = kasaIdToRef[k.id] || yeniRefId();
-      degisti = true;
-    }
+    if (!k.refId) { k.refId = kasaIdToRef[k.id] || yeniRefId(); degisti = true; }
   }
-  if (degisti) kaydetState();
+  if (degisti) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function yukleState() {
@@ -390,8 +418,153 @@ function yukleState() {
     refIdGocKontrol();
   } catch (e) {}
 }
-function kaydetState() {
+
+function kaydetState(bulutaGonderilsin = true) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (bulutaGonderilsin && aktifUser) {
+    bulutGonder(true);
+  }
+}
+
+// --- SUPABASE BULUT SENKRONİZASYONU ---
+function bulutUiGuncelle() {
+  const btn = document.getElementById("btnBulut");
+  const loginForm = document.getElementById("bulutLoginForm");
+  const accPanel = document.getElementById("bulutAccountPanel");
+  if (aktifUser) {
+    const kisa = aktifUser.email.split("@")[0];
+    btn.textContent = "☁ " + kisa;
+    loginForm.style.display = "none";
+    accPanel.style.display = "block";
+    document.getElementById("sbUserMail").textContent = aktifUser.email;
+  } else {
+    btn.textContent = "☁ Giriş";
+    loginForm.style.display = "block";
+    accPanel.style.display = "none";
+  }
+}
+
+function bulutModalAc() {
+  bulutUiGuncelle();
+  document.getElementById("bulutModal").classList.add("open");
+}
+
+async function bulutGiris() {
+  if (!sb) return toast("Bulut modülü yüklenemedi.");
+  const email = document.getElementById("sbEmail").value.trim();
+  const password = document.getElementById("sbPass").value;
+  if (!email || password.length < 6) return toast("E-posta ve en az 6 karakterli şifre girin.");
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return toast("Giriş hatası: " + error.message);
+
+  aktifUser = data.user;
+  bulutUiGuncelle();
+  modalKapat("bulutModal");
+  toast("Buluta bağlanıldı, veriler eşitleniyor...");
+  await bulutCek(false);
+}
+
+async function bulutKayit() {
+  if (!sb) return toast("Bulut modülü yüklenemedi.");
+  const email = document.getElementById("sbEmail").value.trim();
+  const password = document.getElementById("sbPass").value;
+  if (!email || password.length < 6) return toast("E-posta ve en az 6 karakterli şifre girin.");
+
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) return toast("Kayıt hatası: " + error.message);
+
+  if (data.session) {
+    aktifUser = data.user;
+    bulutUiGuncelle();
+    modalKapat("bulutModal");
+    await bulutGonder(false);
+  } else {
+    toast("Hesap oluşturuldu! Şimdi Giriş Yap butonuna basın.");
+  }
+}
+
+async function bulutCikis() {
+  if (sb) await sb.auth.signOut();
+  aktifUser = null;
+  bulutUiGuncelle();
+  modalKapat("bulutModal");
+  toast("Bulut hesabından çıkış yapıldı.");
+}
+
+async function bulutGonder(sessiz = true) {
+  if (!sb || !aktifUser) return;
+  try {
+    const { error } = await sb.from("portfolios").upsert({
+      user_id: aktifUser.id,
+      data: state,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    if (!sessiz) toast("Veriler buluta kaydedildi.");
+  } catch (e) {
+    if (!sessiz) toast("Buluta gönderme hatası: " + e.message);
+  }
+}
+
+async function bulutCek(sessiz = true) {
+  if (!sb || !aktifUser) return;
+  try {
+    const { data, error } = await sb
+      .from("portfolios")
+      .select("data, updated_at")
+      .eq("user_id", aktifUser.id)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (!data || !data.data) {
+      await bulutGonder(true);
+      if (!sessiz) toast("Bulutta kayıt yoktu; cihazdaki veriler buluta yüklendi.");
+      return;
+    }
+
+    const bulutVeri = data.data;
+    if (JSON.stringify(bulutVeri) === JSON.stringify(state)) {
+      if (!sessiz) toast("Bulut ve telefon verileriniz zaten güncel.");
+      return;
+    }
+
+    const yerelBos = state.islemler.length === 0 && state.kasa.length === 0;
+    const bulutBos = (!bulutVeri.islemler || bulutVeri.islemler.length === 0) && (!bulutVeri.kasa || bulutVeri.kasa.length === 0);
+
+    if (bulutBos && !yerelBos) {
+      await bulutGonder(true);
+      return;
+    }
+
+    let uygula = true;
+    if (!yerelBos) {
+      uygula = confirm("Bulut hesabınızda bu cihazdakinden farklı güncel veriler bulundu.\n\nTamam: Buluttaki verileri telefona indir\nİptal: Telefondaki verileri koru ve buluta yaz");
+      if (!uygula) {
+        await bulutGonder(false);
+        return;
+      }
+    }
+
+    state = dogrulaVeHazirlaState(bulutVeri);
+    document.getElementById("tOran").value = state.komOran;
+    kaydetState(false);
+    temaUygula();
+    render();
+    toast("Buluttaki güncel veriler cihaza aktarıldı.");
+  } catch (e) {
+    if (!sessiz) toast("Bulut eşitleme hatası: " + e.message);
+  }
+}
+
+async function bulutOturumBaslat() {
+  if (!sb) return;
+  const { data } = await sb.auth.getSession();
+  if (data?.session?.user) {
+    aktifUser = data.session.user;
+    bulutUiGuncelle();
+    bulutCek(true);
+  }
 }
 
 function seansAcikMi() {
@@ -1103,6 +1276,7 @@ document.getElementById("dt1").value = birAyOnce.toISOString().slice(0, 10);
 document.getElementById("dt2").value = bugunISO();
 temaUygula();
 render();
+bulutOturumBaslat();
 </script>
 </body>
 </html>
