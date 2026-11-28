@@ -20,3 +20,32 @@ git clone [https://github.com/goclovpn-cmd/dodni-portfoy.git](https://github.com
 cd dodni-portfoy
 pip install -r requirements.txt
 python dodni.py
+```
+
+#### Windows `.exe` Olarak Paketleme (PyInstaller & Inno Setup)
+
+```bash
+python -m PyInstaller --noconsole --onedir --clean --noupx --icon=dodni.ico --hidden-import yfinance --hidden-import openpyxl --copy-metadata yfinance --collect-all curl_cffi --collect-all certifi --exclude-module matplotlib --exclude-module scipy --exclude-module tkinter --exclude-module IPython dodni.py
+```
+
+Derleme sonrasında `dodni_kurulum.iss` dosyasını **Inno Setup Compiler** ile derleyerek tek dosyalık Windows kurulum sihirbazı oluşturabilirsiniz.
+
+### 2. Mobil / Web PWA Kurulumu (Vercel)
+
+1. Depoyu kendi GitHub hesabınıza fork'layın.
+2. [Vercel](https://vercel.com) üzerinde yeni proje oluşturup GitHub deponuzu bağlayın (`index.html`, `manifest.json` ve `api/fiyat.js` otomatik algılanır).
+3. Mobil tarayıcınızdan Vercel adresini açıp **"Ana Ekrana Ekle"** seçeneğiyle uygulama olarak kullanın.
+
+### 3. Kendi Bulut Altyapınızı Kurma (Supabase — İsteğe Bağlı)
+
+Uygulama bulut bağlantısı olmadan yerel dosyalarla tam kapasite çalışır. Kendi Supabase projenizle kullanmak isterseniz:
+
+1. [Supabase](https://supabase.com) üzerinde ücretsiz bir proje oluşturun.
+2. Sol menüden **SQL Editor** sekmesine girin ve `supabase/schema.sql` dosyasının içeriğini yapıştırıp çalıştırın.
+3. **Authentication → Sign In / Providers → Email** bölümünden **Confirm email** seçeneğini kapatın (`OFF`).
+4. **Project Settings → API Keys** sayfasından `Project URL` ve `anon/publishable` anahtarını kopyalayın.
+5. `dodni.py` ve `index.html` dosyalarının en üstündeki `SUPABASE_URL` ve `SUPABASE_ANON_KEY` alanlarına kendi bilgilerinizi yazın.
+
+## Yasal Uyarı (Disclaimer)
+
+> Bu proje yalnızca eğitim ve kişisel portföy takibi amacıyla açık kaynak olarak geliştirilmiştir. Borsa İstanbul A.Ş. veya Yahoo Finance ile hiçbir resmi bağlantısı bulunmamaktadır. Uygulamada gösterilen fiyat verileri Yahoo Finance üzerinden sağlanmakta olup gecikmeli veya hatalı olabilir; **kesinlikle yatırım tavsiyesi niteliği taşımaz.**
