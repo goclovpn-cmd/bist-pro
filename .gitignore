@@ -1,0 +1,21 @@
+# Yerel kullanıcı verileri ve oturum dosyaları
+data/
+*.tmp
+sb_session.json
+
+# PyInstaller ve Inno Setup derleme çıktıları
+build/
+dist/
+Kurulum_Ciktisi/
+*.spec
+
+# Python önbellek dosyaları
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
