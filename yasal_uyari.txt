@@ -1,0 +1,3 @@
+DODNI // PORTFÖY YÖNETİMİ
+
+Yasal Uyarı (Disclaimer): Bu proje yalnızca eğitim ve kişisel portföy takibi amacıyla açık kaynak olarak geliştirilmiştir. Borsa İstanbul A.Ş. veya Yahoo Finance ile hiçbir resmi bağlantısı bulunmamaktadır. Uygulamada gösterilen fiyat verileri Yahoo Finance üzerinden sağlanmakta olup gecikmeli veya hatalı olabilir; kesinlikle yatırım tavsiyesi niteliği taşımaz.
