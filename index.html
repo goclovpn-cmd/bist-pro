@@ -286,10 +286,11 @@
     <div class="card-title">☁ DODNI BULUT SENKRONİZASYONU</div>
     <div id="bulutLoginForm">
       <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">
-        PC ve telefonunuzu otomatik eşitlemek için giriş yapın veya ücretsiz hesap oluşturun.
+        PC ve telefonunuzu otomatik eşitlemek için giriş yapın veya davet koduyla ücretsiz hesap oluşturun.
       </div>
       <div style="margin-bottom:8px;"><label>E-posta</label><input type="email" id="sbEmail" placeholder="ornek@eposta.com"></div>
-      <div style="margin-bottom:10px;"><label>Şifre</label><input type="password" id="sbPass" placeholder="En az 6 karakter"></div>
+      <div style="margin-bottom:8px;"><label>Şifre</label><input type="password" id="sbPass" placeholder="En az 6 karakter"></div>
+      <div style="margin-bottom:10px;"><label>Davet Kodu (Yeni Kayıt İçin)</label><input type="text" id="sbInvite" placeholder="Yalnızca yeni hesap açarken girin" style="text-transform:uppercase"></div>
       <div class="row">
         <button class="btn btn-primary" onclick="bulutGiris()">Giriş Yap</button>
         <button class="btn" onclick="bulutKayit()">Hesap Oluştur</button>
@@ -384,6 +385,8 @@ let state = {
   tema: "dark"
 };
 let aktifUser = null;
+let syncCalisiyor = false;
+let bekleyenSync = null; // null, "PUSH" veya { mod: "PULL", sessiz: boolean }
 let seciliHisseModal = null;
 let otoTimer = null;
 let tetiklenenAlarmlar = new Set();
@@ -394,6 +397,20 @@ let idSayac = 0;
 function yeniRefId() {
   idSayac = (idSayac + 1) % 1000;
   return `R${Date.now()}${String(idSayac).padStart(3, "0")}`;
+}
+
+function isoZamanTr(isoStr) {
+  if (!isoStr) return "Bilinmiyor";
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    return d.toLocaleString("tr-TR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  } catch (e) {
+    return isoStr;
+  }
 }
 
 function refIdGocKontrol() {
@@ -469,9 +486,15 @@ async function bulutKayit() {
   if (!sb) return toast("Bulut modülü yüklenemedi.");
   const email = document.getElementById("sbEmail").value.trim();
   const password = document.getElementById("sbPass").value;
+  const inviteCode = document.getElementById("sbInvite").value.trim().toUpperCase();
   if (!email || password.length < 6) return toast("E-posta ve en az 6 karakterli şifre girin.");
+  if (!inviteCode) return toast("Yeni hesap oluşturmak için davet kodu girmelisiniz.");
 
-  const { data, error } = await sb.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { invite_code: inviteCode } }
+  });
   if (error) return toast("Kayıt hatası: " + error.message);
 
   if (data.session) {
@@ -485,6 +508,7 @@ async function bulutKayit() {
 }
 
 async function bulutCikis() {
+  bekleyenSync = null;
   if (sb) await sb.auth.signOut();
   aktifUser = null;
   bulutUiGuncelle();
@@ -492,8 +516,23 @@ async function bulutCikis() {
   toast("Bulut hesabından çıkış yapıldı.");
 }
 
+async function siradakiSyncCalistir() {
+  const siradaki = bekleyenSync;
+  bekleyenSync = null;
+  if (siradaki && typeof siradaki === "object" && siradaki.mod === "PULL") {
+    await bulutCek(siradaki.sessiz);
+  } else if (siradaki === "PUSH") {
+    await bulutGonder(true);
+  }
+}
+
 async function bulutGonder(sessiz = true) {
   if (!sb || !aktifUser) return;
+  if (syncCalisiyor) {
+    if (!bekleyenSync || bekleyenSync === "PUSH") bekleyenSync = "PUSH";
+    return;
+  }
+  syncCalisiyor = true;
   try {
     const { error } = await sb.from("portfolios").upsert({
       user_id: aktifUser.id,
@@ -504,11 +543,19 @@ async function bulutGonder(sessiz = true) {
     if (!sessiz) toast("Veriler buluta kaydedildi.");
   } catch (e) {
     if (!sessiz) toast("Buluta gönderme hatası: " + e.message);
+  } finally {
+    syncCalisiyor = false;
+    await siradakiSyncCalistir();
   }
 }
 
 async function bulutCek(sessiz = true) {
   if (!sb || !aktifUser) return;
+  if (syncCalisiyor) {
+    bekleyenSync = { mod: "PULL", sessiz };
+    return;
+  }
+  syncCalisiyor = true;
   try {
     const { data, error } = await sb
       .from("portfolios")
@@ -518,14 +565,16 @@ async function bulutCek(sessiz = true) {
     if (error) throw error;
 
     if (!data || !data.data) {
+      syncCalisiyor = false;
       await bulutGonder(true);
       if (!sessiz) toast("Bulutta kayıt yoktu; cihazdaki veriler buluta yüklendi.");
       return;
     }
 
     const bulutVeri = data.data;
+    const bulutZaman = isoZamanTr(data.updated_at);
     if (JSON.stringify(bulutVeri) === JSON.stringify(state)) {
-      if (!sessiz) toast("Bulut ve telefon verileriniz zaten güncel.");
+      if (!sessiz) toast(`Bulut ve telefon verileriniz güncel (${bulutZaman}).`);
       return;
     }
 
@@ -533,14 +582,21 @@ async function bulutCek(sessiz = true) {
     const bulutBos = (!bulutVeri.islemler || bulutVeri.islemler.length === 0) && (!bulutVeri.kasa || bulutVeri.kasa.length === 0);
 
     if (bulutBos && !yerelBos) {
+      syncCalisiyor = false;
       await bulutGonder(true);
       return;
     }
 
     let uygula = true;
     if (!yerelBos) {
-      uygula = confirm("Bulut hesabınızda bu cihazdakinden farklı güncel veriler bulundu.\n\nTamam: Buluttaki verileri telefona indir\nİptal: Telefondaki verileri koru ve buluta yaz");
+      uygula = confirm(
+        `Bulut hesabınızda bu cihazdakinden farklı bir portföy kaydı bulundu.\n` +
+        `Son Bulut Güncellemesi: ${bulutZaman}\n\n` +
+        `Tamam: Buluttaki verileri telefona indir\n` +
+        `İptal: Telefondaki verileri koru ve buluta yaz`
+      );
       if (!uygula) {
+        syncCalisiyor = false;
         await bulutGonder(false);
         return;
       }
@@ -551,9 +607,12 @@ async function bulutCek(sessiz = true) {
     kaydetState(false);
     temaUygula();
     render();
-    toast("Buluttaki güncel veriler cihaza aktarıldı.");
+    toast(`Buluttaki veriler (${bulutZaman}) cihaza aktarıldı.`);
   } catch (e) {
     if (!sessiz) toast("Bulut eşitleme hatası: " + e.message);
+  } finally {
+    syncCalisiyor = false;
+    await siradakiSyncCalistir();
   }
 }
 
