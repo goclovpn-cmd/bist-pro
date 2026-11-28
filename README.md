@@ -22,3 +22,6 @@ git clone [https://github.com/goclovpn-cmd/dodni-portfoy.git](https://github.com
 cd dodni-portfoy
 pip install -r requirements.txt
 python dodni.py
+Windows .exe Olarak Paketleme (PyInstaller & Inno Setup)
+python -m PyInstaller --noconsole --onedir --clean --noupx --icon=dodni.ico --hidden-import yfinance --hidden-import openpyxl --copy-metadata yfinance --collect-all curl_cffi --collect-all certifi --exclude-module matplotlib --exclude-module scipy --exclude-module tkinter --exclude-module IPython dodni.py
+Derleme sonrasında dodni_kurulum.iss dosyasını Inno Setup Compiler ile derleyerek tek dosyalık Windows kurulum sihirbazı oluşturabilirsiniz.
